@@ -26,11 +26,12 @@ import android.support.v4.widget.ViewDragHelper;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 /**
- * Created by chenupt@gmail.com on 2015/1/18.
+ * Add dushiguang
  * Description : Drag down to show a menu panel on the top.
  */
 public class DragTopLayout extends FrameLayout {
@@ -42,7 +43,7 @@ public class DragTopLayout extends FrameLayout {
 
     private int contentTop;
     private int topViewHeight;
-    private float ratio;
+    private float ratio = 1.0f;
     private boolean isRefreshing;
     private boolean shouldIntercept = true;
 
@@ -352,11 +353,35 @@ public class DragTopLayout extends FrameLayout {
         }
     }
 
+    private int num = 0;
+    private boolean mScrolling;
+    private float touchDownY;
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         try {
-
             boolean intercept = shouldIntercept && dragHelper.shouldInterceptTouchEvent(ev);
+
+            switch (ev.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    touchDownY = ev.getY();
+                    mScrolling = false;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    if (Math.abs(touchDownY - ev.getY()) >= ViewConfiguration.get(
+                            getContext()).getScaledTouchSlop()) {
+                        mScrolling = true;
+                    } else {
+                        mScrolling = false;
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                    mScrolling = false;
+                    break;
+            }
+
+            if(!dragHelper.shouldInterceptTouchEvent(ev)) {
+                return mScrolling;
+            }
             return intercept;
         } catch (NullPointerException e) {
             e.printStackTrace();
@@ -386,7 +411,10 @@ public class DragTopLayout extends FrameLayout {
                 event.setAction(MotionEvent.ACTION_DOWN);
                 dispatchingChildrenDownFaked = true;
             }
-            dragContentView.dispatchTouchEvent(event);
+
+            if(panelState == PanelState.COLLAPSED) {
+                dragContentView.dispatchTouchEvent(event);
+            }
         }
 
         if (dispatchingChildrenContentView && dispatchingChildrenStartedAtY < event.getY()) {
@@ -411,11 +439,11 @@ public class DragTopLayout extends FrameLayout {
     //================
     // public
     //================
-    
+
     public PanelState getState() {
         return panelState;
     }
-    
+
     public void openTopView(boolean anim) {
         // Before created
         if (dragContentView.getHeight() == 0) {
